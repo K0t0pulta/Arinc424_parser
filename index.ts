@@ -130,6 +130,10 @@ if (!fs.existsSync(dbResultDir)) fs.mkdirSync(dbResultDir);
 		// fs.writeFileSync(`./${dbResultDir}/proceduresList.json`, JSON.stringify(ProcedureList, null, '\t'));
 
 		const procedureData = procedureBuilder(ProcedureList);
+		// fs.writeFileSync(
+		// 	`./${dbResultDir}/airportsProceduresNew.json`,
+		// 	JSON.stringify(procedureData, null, '\t')
+		// );
 		fs.writeFileSync(
 			`./${dbResultDir}/airportsProcedures.json`,
 			JSON.stringify(procedureData, null, '\t')
