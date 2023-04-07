@@ -6,11 +6,13 @@ import CWaypoint from '../classes/CWaypoint';
 import CAirport from '../classes/CAirport';
 import greatCircleCalculator from './greatCircleCalculator';
 import { IAirportProcedureData } from '../interfaces/IAirportProcedureData';
+import { IAirportProcedureData } from '../interfaces/IAirportProcedureData';
 
 const waypointsList = JSON.parse(fs.readFileSync('./db2207-result/waypointsList.json', 'utf8')) as CWaypoint[];
 const airportsList = JSON.parse(fs.readFileSync('./db2207-result/airportsList.json', 'utf8')) as CAirport[];
 
 export default function procedureBuilder (stack: any) {
+	const airportsProcedures : IAirportProcedureData[] = [];
 	const airportsProcedures : IAirportProcedureData[] = [];
 	const ruwaysCodes = ['R', 'L', 'C', undefined];
 	stack.forEach((el: CProcedure) => {
@@ -46,8 +48,8 @@ export default function procedureBuilder (stack: any) {
 				/*если схемы нет, то считаем начальную дистанцию от КТА до первой точки схемы и создаем соответствующую запись для схемы	*/
 				if (!SIDitem) {
 					const initPoint = { name: airportData.airportIdent, icao: airportData.icaoCode, coordinates: [airportData.latitude, airportData.longitude] };
-					const initDistance = (greatCircleCalculator(requiredAirport.coordinates, point.coordinates, 'nm') || 0);
-					requiredAirport['SID'].push({name: procedureIdent, runway: transitionIdent, path: [point], distance: initDistance, controlPoint: initPoint});
+					const initDistance = (greatCircleCalculator(airportsProcedures[airport].coordinates, point.coordinates, 'nm') || 0);
+					airportsProcedures[airport]['SID'].push({name: procedureIdent, runway: transitionIdent, path: [point], distance: initDistance, controlPoint: initPoint});
 				} else {
 					/*если схема есть, то просто добавляем очередную точку схемы в path[]	*/
 					SIDitem.path.push(point);
@@ -58,21 +60,23 @@ export default function procedureBuilder (stack: any) {
 				}
 				if (requiredAirport['RUNWAYS'].indexOf(transitionIdent) === -1 && transitionIdent.slice(0,2) === 'RW' && ruwaysCodes.includes(transitionIdent[4])) {
 					requiredAirport['RUNWAYS'].push(transitionIdent);
+				if (requiredAirport.RUNWAYS.indexOf(transitionIdent) === -1 && transitionIdent.slice(0,2) === 'RW' && ruwaysCodes.includes(transitionIdent[4])) {
+					requiredAirport.RUNWAYS.push(transitionIdent);
 				}
 				break;
 			case 'E':
-				const STARitem = requiredAirport['STAR'].find((el) => el.name === procedureIdent);
+				const STARitem = requiredAirport.STAR.find((el) => el.name === procedureIdent);
 				if (!STARitem) {
-					requiredAirport['STAR'].push({name: procedureIdent, runway: '', path: [point], distance: 0, controlPoint: point});
+					requiredAirport.STAR.push({name: procedureIdent, runway: '', path: [point], distance: 0, controlPoint: point});
 				} else {
 					STARitem.path.push(point);
 					if (transitionIdent.slice(0,2) === 'RW' && ruwaysCodes.includes(transitionIdent[4])) STARitem.runway = transitionIdent;
 				}
 				break;
 			case 'F':
-				const APPROACHitem = requiredAirport['APPROACH'].find((el) => el.name === procedureIdent);
+				const APPROACHitem = requiredAirport.APPROACH.find((el) => el.name === procedureIdent);
 				if (!APPROACHitem) {
-					requiredAirport['APPROACH'].push({name: procedureIdent, runway: '', path: [point], distance: 0, controlPoint: point});
+					requiredAirport.APPROACH.push({name: procedureIdent, runway: '', path: [point], distance: 0, controlPoint: point});
 				} else {
 					APPROACHitem.path.push(point);
 					if (transitionIdent.slice(0,2) === 'RW' && ruwaysCodes.includes(transitionIdent[4])) APPROACHitem.runway = transitionIdent;
