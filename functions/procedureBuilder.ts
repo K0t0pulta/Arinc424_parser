@@ -6,13 +6,11 @@ import CWaypoint from '../classes/CWaypoint';
 import CAirport from '../classes/CAirport';
 import greatCircleCalculator from './greatCircleCalculator';
 import { IAirportProcedureData } from '../interfaces/IAirportProcedureData';
-import { IAirportProcedureData } from '../interfaces/IAirportProcedureData';
 
 const waypointsList = JSON.parse(fs.readFileSync('./db2207-result/waypointsList.json', 'utf8')) as CWaypoint[];
 const airportsList = JSON.parse(fs.readFileSync('./db2207-result/airportsList.json', 'utf8')) as CAirport[];
 
 export default function procedureBuilder (stack: any) {
-	const airportsProcedures : IAirportProcedureData[] = [];
 	const airportsProcedures : IAirportProcedureData[] = [];
 	const ruwaysCodes = ['R', 'L', 'C', undefined];
 	stack.forEach((el: CProcedure) => {
@@ -58,8 +56,6 @@ export default function procedureBuilder (stack: any) {
 					не имееется ни имени, ни координат. Записываем только именованные точки */
 					if (point.name) SIDitem.controlPoint = point;
 				}
-				if (requiredAirport['RUNWAYS'].indexOf(transitionIdent) === -1 && transitionIdent.slice(0,2) === 'RW' && ruwaysCodes.includes(transitionIdent[4])) {
-					requiredAirport['RUNWAYS'].push(transitionIdent);
 				if (requiredAirport.RUNWAYS.indexOf(transitionIdent) === -1 && transitionIdent.slice(0,2) === 'RW' && ruwaysCodes.includes(transitionIdent[4])) {
 					requiredAirport.RUNWAYS.push(transitionIdent);
 				}
