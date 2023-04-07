@@ -1,16 +1,17 @@
 import * as fs from 'fs';
-import { IAirportProcedureList } from "../interfaces/IAirportProcedureList";
 import CProcedure from "../classes/CProcedure";
+import CAirportProcedureData from '../classes/CAirportProcedureData';
 import { IProcedurePoint } from "../interfaces/IProcedurePoint";
 import CWaypoint from '../classes/CWaypoint';
 import CAirport from '../classes/CAirport';
 import greatCircleCalculator from './greatCircleCalculator';
+import { IAirportProcedureData } from '../interfaces/IAirportProcedureData';
 
 const waypointsList = JSON.parse(fs.readFileSync('./db2207-result/waypointsList.json', 'utf8')) as CWaypoint[];
 const airportsList = JSON.parse(fs.readFileSync('./db2207-result/airportsList.json', 'utf8')) as CAirport[];
 
 export default function procedureBuilder (stack: any) {
-	const airportsProcedures : IAirportProcedureList = {};
+	const airportsProcedures : IAirportProcedureData[] = [];
 	const ruwaysCodes = ['R', 'L', 'C', undefined];
 	stack.forEach((el: CProcedure) => {
 		let point: IProcedurePoint;
@@ -21,18 +22,32 @@ export default function procedureBuilder (stack: any) {
 		} else point = { name: el.fixIdent, icao: el.icaoCode };
 		const { procedureIdent, transitionIdent, arptIdent: airport, subCode: type } = el;
 		const airportData = airportsList.find((el) => el.airportIdent === airport)
-		if (Object.keys(airportsProcedures).indexOf(airport) === -1) {
-			airportsProcedures[airport] = {'RUNWAYS': [], coordinates: [airportData.latitude, airportData.longitude], 'SID': [], 'STAR': [], 'APPROACH': []};
+		let requiredAirport = airportsProcedures.find((ap) => ap.AIRPORT_ICAO === airport);
+		if (!requiredAirport) {
+			requiredAirport = new CAirportProcedureData();
+			airportsProcedures.push({
+				AIRPORT_ICAO: airport,
+				RUNWAYS: [],
+				coordinates: [airportData.latitude, airportData.longitude],
+				SID: [],
+				STAR: [],
+				APPROACH: [],
+			});
 		};
+		// console.log(airport);
+		// console.log(requiredAirport);
+		// console.log(airportsProcedures);
 		switch(type) {
 			case 'D':
 				/*проверяем наличие схемы для конкретного аэропорта */
-				const SIDitem = airportsProcedures[airport]['SID'].find((el) => el.name === procedureIdent);
+				const SIDitem = requiredAirport.SID.find(
+					(el) => el.name === procedureIdent
+				);
 				/*если схемы нет, то считаем начальную дистанцию от КТА до первой точки схемы и создаем соответствующую запись для схемы	*/
 				if (!SIDitem) {
 					const initPoint = { name: airportData.airportIdent, icao: airportData.icaoCode, coordinates: [airportData.latitude, airportData.longitude] };
-					const initDistance = (greatCircleCalculator(airportsProcedures[airport].coordinates, point.coordinates, 'nm') || 0);
-					airportsProcedures[airport]['SID'].push({name: procedureIdent, runway: transitionIdent, path: [point], distance: initDistance, controlPoint: initPoint});
+					const initDistance = (greatCircleCalculator(requiredAirport.coordinates, point.coordinates, 'nm') || 0);
+					requiredAirport['SID'].push({name: procedureIdent, runway: transitionIdent, path: [point], distance: initDistance, controlPoint: initPoint});
 				} else {
 					/*если схема есть, то просто добавляем очередную точку схемы в path[]	*/
 					SIDitem.path.push(point);
@@ -41,23 +56,23 @@ export default function procedureBuilder (stack: any) {
 					не имееется ни имени, ни координат. Записываем только именованные точки */
 					if (point.name) SIDitem.controlPoint = point;
 				}
-				if (airportsProcedures[airport]['RUNWAYS'].indexOf(transitionIdent) === -1 && transitionIdent.slice(0,2) === 'RW' && ruwaysCodes.includes(transitionIdent[4])) {
-					airportsProcedures[airport]['RUNWAYS'].push(transitionIdent);
+				if (requiredAirport['RUNWAYS'].indexOf(transitionIdent) === -1 && transitionIdent.slice(0,2) === 'RW' && ruwaysCodes.includes(transitionIdent[4])) {
+					requiredAirport['RUNWAYS'].push(transitionIdent);
 				}
 				break;
 			case 'E':
-				const STARitem = airportsProcedures[airport]['STAR'].find((el) => el.name === procedureIdent);
+				const STARitem = requiredAirport['STAR'].find((el) => el.name === procedureIdent);
 				if (!STARitem) {
-					airportsProcedures[airport]['STAR'].push({name: procedureIdent, runway: '', path: [point], distance: 0, controlPoint: point});
+					requiredAirport['STAR'].push({name: procedureIdent, runway: '', path: [point], distance: 0, controlPoint: point});
 				} else {
 					STARitem.path.push(point);
 					if (transitionIdent.slice(0,2) === 'RW' && ruwaysCodes.includes(transitionIdent[4])) STARitem.runway = transitionIdent;
 				}
 				break;
 			case 'F':
-				const APPROACHitem = airportsProcedures[airport]['APPROACH'].find((el) => el.name === procedureIdent);
+				const APPROACHitem = requiredAirport['APPROACH'].find((el) => el.name === procedureIdent);
 				if (!APPROACHitem) {
-					airportsProcedures[airport]['APPROACH'].push({name: procedureIdent, runway: '', path: [point], distance: 0, controlPoint: point});
+					requiredAirport['APPROACH'].push({name: procedureIdent, runway: '', path: [point], distance: 0, controlPoint: point});
 				} else {
 					APPROACHitem.path.push(point);
 					if (transitionIdent.slice(0,2) === 'RW' && ruwaysCodes.includes(transitionIdent[4])) APPROACHitem.runway = transitionIdent;
